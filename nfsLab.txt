@@ -1,0 +1,67 @@
+#!/bin/bash
+
+# Question 2
+awk '/access/ { count++} END { print "Access: ", count }' NFS
+awk '/getattr/ {count++} END { print "Get Attribute: ", count}' NFS
+awk '/read/ {count++} END {print "Read: ", count}' NFS
+awk '/write/ {count++} END {print "Write: ", count}' NFS
+
+# Write: 494
+# Read: 360
+# Get Attribute: 144
+# Access: 2
+# Most frequent operation is Write
+# NFS lives up to it's reputation
+
+# Question 3
+awk '($8 == "getattr"){{count++} {ave = ave + strtonum("0x"$(21))}} END { print "Average file size:", (ave/count)*2}' NFS
+awk '($8 == "getattr" && $(17)>0){print $(17)}' NFS | sort | uniq -c
+
+# 4 different users are accessing files, and 18a88 is dominating traffic for Get Attribute
+# Average file size: 3274.51
+
+#awk ' ($8 == "getattr" && $5 == "R3") {print strtonum("0x"$(21)), ","}' NFS
+
+# After running this command, I copied the output into mathematica and plotted a histogram for the distribution
+# Graph emailed to Dr. Albing
+
+# Some other interesting fields in the get attribute replies are file type, number of links, the uid and gid, file id, time of access, and time of last modification
+
+# Question 4
+#awk '/read/ { print $6}' NFS
+#awk '/write/ { print $6}' NFS
+# Looking at column 6 in read/write entries we can see that requests are processed sequentially. We see that the id's that map replies to requests come sequentially. Since in most cases, the reply will come almost immediatly after the request, we know that NFS is processing requests sequentially.There is a case when two requests come within quick succession so you see a different id come after the first request, but then they are proccessed in the order that they came in.
+	
+# Question 5
+awk '/C3/ {print "Requests:", $2}' NFS | sort | uniq -c
+awk '/R3/ {print "Replies:", $3}' NFS | sort | uniq -c
+
+# Request/Reply Pairs 	Machine
+# -----------------------------
+# 242			32.03ff
+# 110			32.03fe
+# 74			31.0320
+# 59 			32.03fa
+# 7			33.03fe
+# 2			33.03fc
+# 2 			35.03ff
+# 2 			36.0320
+# 1 			33.03fc
+# 1			34.03ff
+# 
+# This traffic matrix indicates that a large amount of traffic is directed through a couple users (more than half for two machines)
+
+# Question 6
+awk 'BEGIN{index1=0; index2=0; sum=0} /C3/ { requ[index1]=$2; timeRequ[index1++]=$1} /R3/ {rep[index2]=$3; timeRep[index2++]=$1} END{for(i=0;i<index2; i++){sum+=sqrt((timeRequ[i]-timeRep[i])^2)} {print "Average response time:",100000*sum/index2, "* 10^-5", "seconds"}}' NFS
+
+#Average response time: 123.231 * 10^-5
+
+#awk 'BEGIN{index1=0; index2=0; sum=0} /C3/ { requ[index1]=$2; timeRequ[index1++]=$1} /R3/ {rep[index2]=$3; timeRep[index2++]=$1} END{for(i=0;i<index2; i++){print sqrt((timeRequ[i]-timeRep[i])^2), "," }}' NFS | sort
+
+# I copied the data from the above command into mathematica and generated a histogram and found minimum and maximum values. The minimum response time is 0.000105023, and the maximum response time was found to be 0.00891697
+# Graph email to Dr. Albing 
+
+# Question 7
+awk 'BEGIN{count1=0; count2=0} /C3/{count1++} /R3/ {count2++} END {print "Number of requests:",count1,"Number of replies:", count2}' NFS
+
+# Looking at the output of this query, I can not find any evidenceof retrying. Evidence I would be looking for would be a missmatching number of requests and replies. This is not so, so I have no reason to believe that there are retries.
